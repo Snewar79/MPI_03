@@ -7,7 +7,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#define N 3
+#define N 10
 #define min_size 3
 
 
@@ -57,58 +57,67 @@ bool operator==(point a, point b)
 
 
 
-double v_cos(int x0, int y0, int x1, int y1, int x2, int y2)
+
+int shell(int *buffer, int point_count, vector<int> &out_index)
 {
-	int ax, ay, bx, by;
-
-	ax = x1 - x0;
-	ay = y1 - y0;
-	bx = x2 - x1;
-	by = y2 - y1;
-
-	double cos;
-
-	cos = ((ax * bx) + (ay * by)) / (sqrt(ax * ax + ay * ay) * sqrt(bx * bx + by * by));
-	return cos;
-}
-
-
-
-void shell(int *buffer, int point_count, int **ret_buf)
-{
-	point p0;
-	point p1;
-	point p2;
+	
 	vector<point> v_p;
-	vector<int> out_index;
+	
+	int i_p1 = 0;
+	int i_p2 = -1;
+	int i_p3 = -1;
+	// Посчитать количество различных точек. Изи
 
-	point *point_buffer = new point[point_count];
+	
 	point *shell = new point[point_count];
-
-	p1.x = buffer[0];
-	p1.y = buffer[1];
-
-	int shell_count = 0;
 
 	for (int i = 0; i < point_count; i++)
 	{
-		if (buffer[i * 2 + 1] < p1.y)
+		point point_buffer;
+		point_buffer.x = buffer[i * 2];
+		point_buffer.y = buffer[i * 2 + 1];
+		v_p.push_back(point_buffer);
+
+		if (v_p[i] != v_p[i_p1])
 		{
-			p1.x = buffer[i * 2];
-			p1.y = buffer[i * 2 + 1];
+			if (i_p2 == -1)
+			{
+				i_p2 = i;
+			}
+			else
+			{
+				if (v_p[i_p2] != v_p[i])
+				{
+					i_p3 = i;
+				}
+
+			}
+
 		}
-		point_buffer[i].x = buffer[i * 2];
-		point_buffer[i].y = buffer[i * 2 + 1];
-		v_p.push_back(point_buffer[i]);
 	}
+
+	if (i_p1 == 0 && i_p2 == -1 && i_p2 == -1)
+	{
+		out_index.push_back(0);
+		return 1;
+	}
+	if (i_p1 == 0 && i_p2 != -1 && i_p3 == -1)
+	{
+		out_index.push_back(0);
+		out_index.push_back(i_p2);
+		return 2;
+	}
+
 
 	ConvexHullJarvis(v_p, out_index, point_count);
 
-	for (int i = 0; i < out_index.size(); i++)
-	{
-		cout << out_index[i] << "\n";
-	}
+
 	
+	int shell_count = out_index.size() - 1;
+	
+
+	return shell_count;
+
 }
 
 
@@ -136,7 +145,7 @@ void ConvexHullJarvis(const vector<point> &mas, vector<int> &convex_hull, int n)
 	point prev = point(first.x - 1, first.y);
 	do
 	{
-		double minCosAngle = 1e9; // чем больше угол, тем меньше его косинус
+		double minCosAngle = -1e9; // чем больше угол, тем меньше его косинус
 		double maxLen = 1e9;
 		int next = -1;
 
@@ -145,7 +154,7 @@ void ConvexHullJarvis(const vector<point> &mas, vector<int> &convex_hull, int n)
 		{
 			
 			double curCosAngle = CosAngle(prev, cur, mas[i]);
-			if (Less(curCosAngle, minCosAngle))
+			if (More(curCosAngle, minCosAngle))
 			{
 				next = i;
 				minCosAngle = curCosAngle;
@@ -200,7 +209,7 @@ double dist(point a, point b)
 double CosAngle(point a, point b, point c)
 {
 
-	if (a == b || b == c || c == a) return 1e10;
+	if (a == b || b == c || c == a) return -1e10;
 
 	int ax, ay, bx, by;
 
@@ -208,6 +217,9 @@ double CosAngle(point a, point b, point c)
 	ay = b.y - a.y;
 	bx = c.x - b.x;
 	by = c.y - b.y;
+
+	a.x *= -1;
+	a.y *= -1;
 
 	double cos;
 
@@ -247,22 +259,15 @@ int main(int argc, char **argv)
 		
 		point_buffer = new int[2 * N];
 
-		/*for (int i = 0; i < N * 2; i++)
+		for (int i = 0; i < N * 2; i++)
 		{
-			point_buffer[i] = rand() % 100 - 50;
+			//point_buffer[i] = rand() % 100 - 50;
+			point_buffer[i] = 3;
 		}
-		*/
+		
+		point_buffer[N * 2 - 1] = -3;
 
-
-
-		point_buffer[0] = 3;
-		point_buffer[1] = 0;
-		point_buffer[2] = 4;
-		point_buffer[3] = 3;
-		point_buffer[4] = -3;
-		point_buffer[5] = 2;
-
-
+	
 
 
 
@@ -365,11 +370,56 @@ int main(int argc, char **argv)
 	}
 	cout << points << "\n";
 	*/
-	int *shell_buf;
+	int *shell_buf = NULL;
 
-	shell(rec_point_buf, work_size, &shell_buf);
+	int shell_count;
 
+	vector<int> out_index;
+
+	shell_count = shell(rec_point_buf, work_size, out_index);
+
+
+	shell_buf = new int[shell_count * 2];
+
+	for (int i = 0; i < shell_count; i++)
+	{
+		shell_buf[i * 2] = rec_point_buf[out_index[i] * 2];
+		shell_buf[i * 2 + 1] = rec_point_buf[out_index[i] * 2 + 1];
+	}
+
+	/*string points = to_string(taskid) + "-id points " + "diff = " + to_string(work_size - shell_count) + " ";
+
+	for (int i = 0; i < shell_count; i++)
+	{
+	points += "(" + to_string(shell_buf[i * 2]) + ", " + to_string(shell_buf[i * 2 + 1]) + ") ";
+	}
+	cout << points << "\n"; */
 	
+	int *shell_count_buf = NULL;
+
+	if (taskid == 0) shell_count_buf = new int[numtasks];
+
+
+	MPI_Gather(&shell_count, 1, MPI_INT, shell_count_buf, numtasks, MPI_INT, 0, MPI_COMM_WORLD);
+
+	int * last_shell_buf;
+	int *recvcounts;
+	int last_shell_count;
+
+	if (taskid == 0)
+	{
+		last_shell_count = 0;
+		for (int i = 0; i < numtasks; i++)
+		{
+
+
+
+		}
+	}
+
+	MPI_Gatherv(shell_buf, shell_count * 2, MPI_INT,
+		last_shell_buf, recvcounts, disp, MPI_INT,
+		0, MPI_COMM_WORLD);
 
 	MPI_Finalize();
 

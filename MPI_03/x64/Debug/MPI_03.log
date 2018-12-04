@@ -1,4 +1,5 @@
 ﻿  main.cpp
-c:\users\администратор\documents\visual studio 2015\projects\mpi_03\mpi_03\main.cpp(244): warning C4244: 'argument': conversion from 'time_t' to 'unsigned int', possible loss of data
+c:\users\администратор\documents\visual studio 2015\projects\mpi_03\mpi_03\main.cpp(116): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+c:\users\администратор\documents\visual studio 2015\projects\mpi_03\mpi_03\main.cpp(256): warning C4244: 'argument': conversion from 'time_t' to 'unsigned int', possible loss of data
   MPI_03.vcxproj -> C:\Users\Администратор\documents\visual studio 2015\Projects\MPI_03\x64\Debug\MPI_03.exe
   MPI_03.vcxproj -> C:\Users\Администратор\documents\visual studio 2015\Projects\MPI_03\x64\Debug\MPI_03.pdb (Partial PDB)
