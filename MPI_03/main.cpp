@@ -7,7 +7,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#define N 10
+#define N 100000
 #define min_size 3
 
 
@@ -261,11 +261,11 @@ int main(int argc, char **argv)
 
 		for (int i = 0; i < N * 2; i++)
 		{
-			//point_buffer[i] = rand() % 100 - 50;
-			point_buffer[i] = 3;
+			point_buffer[i] = rand() % 10000 - 5000;
+			//point_buffer[i] = 3;
 		}
 		
-		point_buffer[N * 2 - 1] = -3;
+		//point_buffer[N * 2 - 1] = -3;
 
 	
 
@@ -273,7 +273,7 @@ int main(int argc, char **argv)
 
 		cout << "Process NUM = " << numtasks << "\n";
 
-		string points = "";
+	/*	string points = "";
 
 		for (int i = 0; i < N; i++)
 		{
@@ -281,7 +281,7 @@ int main(int argc, char **argv)
 		}
 		cout << points << "\n";
 
-
+		*/
 
 		p_work_size = new int[numtasks];
 		
@@ -289,7 +289,7 @@ int main(int argc, char **argv)
 
 		standart_task = N / numtasks;
 
-		cout << "standart_task = " << standart_task << "\n";
+	//	cout << "standart_task = " << standart_task << "\n";
 		
 		int real_proc_count = 0;
 
@@ -328,11 +328,11 @@ int main(int argc, char **argv)
 		}
 
 		// Посчитали, значит количество точек и минимальные задания
-		for (int i = 0; i < numtasks; i++)
+	//	for (int i = 0; i < numtasks; i++)
 		{
-			cout << i << " = " << p_work_size[i] << " | ";
+//			cout << i << " = " << p_work_size[i] << " | ";
 		}
-		cout << "\n";
+	//	cout << "\n";
 		// Зашибись все поделено. Осталось разослать
 		//~
 		// Ан нет, надо бы еще смещения посчитать
@@ -376,17 +376,26 @@ int main(int argc, char **argv)
 
 	vector<int> out_index;
 
-	shell_count = shell(rec_point_buf, work_size, out_index);
 
-
-	shell_buf = new int[shell_count * 2];
-
-	for (int i = 0; i < shell_count; i++)
+	if (work_size != 0)
 	{
-		shell_buf[i * 2] = rec_point_buf[out_index[i] * 2];
-		shell_buf[i * 2 + 1] = rec_point_buf[out_index[i] * 2 + 1];
-	}
+		shell_count = shell(rec_point_buf, work_size, out_index);
 
+
+		
+
+		shell_buf = new int[shell_count * 2];
+
+		for (int i = 0; i < shell_count; i++)
+		{
+			shell_buf[i * 2] = rec_point_buf[out_index[i] * 2];
+			shell_buf[i * 2 + 1] = rec_point_buf[out_index[i] * 2 + 1];
+		}
+	}
+	else
+	{
+		shell_count = 0;
+	}
 	/*string points = to_string(taskid) + "-id points " + "diff = " + to_string(work_size - shell_count) + " ";
 
 	for (int i = 0; i < shell_count; i++)
@@ -396,30 +405,59 @@ int main(int argc, char **argv)
 	cout << points << "\n"; */
 	
 	int *shell_count_buf = NULL;
-
+	int *double_shell_count_buf = NULL;
+	int *last_shell_buf = NULL;
 	if (taskid == 0) shell_count_buf = new int[numtasks];
 
+	//cout << "shell " << shell_count << "\n";
+	MPI_Gather(&shell_count, 1, MPI_INT, shell_count_buf, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-	MPI_Gather(&shell_count, 1, MPI_INT, shell_count_buf, numtasks, MPI_INT, 0, MPI_COMM_WORLD);
-
-	int * last_shell_buf;
-	int *recvcounts;
-	int last_shell_count;
+	int all_shell_count;
 
 	if (taskid == 0)
 	{
-		last_shell_count = 0;
+		all_shell_count = 0;
+		disp[0] = 0;
+
+		for (int i = 1; i < numtasks; i++)
+		{
+			disp[i] = disp[i - 1] + shell_count_buf[i - 1] * 2;
+		}
 		for (int i = 0; i < numtasks; i++)
 		{
-
-
-
+			all_shell_count += shell_count_buf[i];
+		}
+	//	cout << "all_shell_count = " << all_shell_count << "\n";
+		last_shell_buf = new int[all_shell_count * 2];
+		double_shell_count_buf = new int[numtasks];
+		for (int i = 0; i < numtasks; i++)
+		{
+			double_shell_count_buf[i] = shell_count_buf[i] * 2;
 		}
 	}
 
-	MPI_Gatherv(shell_buf, shell_count * 2, MPI_INT,
-		last_shell_buf, recvcounts, disp, MPI_INT,
-		0, MPI_COMM_WORLD);
+	//cout << "s = "<< shell_count << "\n";
+
+	MPI_Gatherv(shell_buf, shell_count * 2, MPI_INT, last_shell_buf, double_shell_count_buf, disp, MPI_INT, 0, MPI_COMM_WORLD); 
+		
+
+	if (taskid == 0)
+	{
+		vector<int> last_id;
+
+		int out_count = shell(last_shell_buf, all_shell_count, last_id);
+
+		string points = to_string(taskid) + "-out points ";
+
+		for (int i = 0; i < out_count; i++)
+		{
+		points += "(" + to_string(last_shell_buf[last_id[i] * 2]) + ", " + to_string(last_shell_buf[last_id[i] * 2 + 1]) + ") ";
+		}
+		cout << points << "\n"; 
+
+
+	}
+
 
 	MPI_Finalize();
 
