@@ -7,8 +7,8 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#define N 9
-#define min_size 3
+#define N 10000
+#define min_size 1
 
 
 using namespace std;
@@ -261,10 +261,33 @@ int main(int argc, char **argv)
 
 		for (int i = 0; i < N * 2; i++)
 		{
-			point_buffer[i] = rand() % 100 - 50;
+			point_buffer[i] = rand() % 100000 - 50000;
 		
 		}
 		
+
+
+
+
+
+
+		
+			/*string st;
+
+			st = "";
+			for (int i = 0; i < N; i++)
+			{
+				st += "(" + to_string(point_buffer[i * 2]) + ", " + to_string(point_buffer[i * 2 + 1]) + ") ";
+			}
+			st += "\n";
+			cout << st;
+
+
+			*/
+
+
+
+
 
 		cout << "Process NUM = " << numtasks << "\n";
 
@@ -513,98 +536,131 @@ int main(int argc, char **argv)
 	int level = 0;
 	bool live = true; // Не отдал ли процесс свои данные?
 
-	bool for_send = false;
-	bool for_rec = false;
+	
 
-	int mask = 1 << level;
-
-	int k, k1;
-
-
-	if (live && taskid < right_num_proc)
+	while ((1 << level) < right_num_proc)
 	{
-		// Как понять, принимаем мы или пересылаем данные? Хмм, ну, посомтрим бит номер level. Если 1, то шлем, если нет, то пересылаем
 
-		
+		bool for_send = false;
+		bool for_rec = false;
 
-		
+		int mask = 1 << level;
 
-		if (((mask & taskid) != 0) && live) for_send = true;
-		if (((mask & taskid) == 0) && live) for_rec = true;
+		int k, k1;
 
-		
 
-		if (for_send)
+
+
+		if (live && taskid < right_num_proc && numtasks > 1)
 		{
-			live = false;
-			
-			k1 = shell_count;
-			k = shell_count;
+			// Как понять, принимаем мы или пересылаем данные? Хмм, ну, посомтрим бит номер level. Если 1, то шлем, если нет, то пересылаем
 
-			send_to = 1 << level;
 
-			MPI_Send(&k, 1, MPI_INT, taskid - send_to, 90, MPI_COMM_WORLD);
-			MPI_Send(union_buffer, k * 2, MPI_INT, taskid - send_to, 91, MPI_COMM_WORLD);
+			if (((mask & taskid) != 0) && live) for_send = true;
+			if (((mask & taskid) == 0) && live) for_rec = true;
+
+
+
+			if (for_send)
+			{
+				live = false;
+
+				k1 = shell_count;
+				k = shell_count;
+
+				send_to = 1 << level;
+
+				MPI_Send(&k, 1, MPI_INT, taskid - send_to, 90, MPI_COMM_WORLD);
+				MPI_Send(union_buffer, k * 2, MPI_INT, taskid - send_to, 91, MPI_COMM_WORLD);
+			}
+
+
+
+			if (for_rec)
+			{
+				MPI_Status st_l;
+				rec_from = 1 << level;
+				k = shell_count;
+				MPI_Recv(&k1, 1, MPI_INT, taskid + rec_from, 90, MPI_COMM_WORLD, &st_l);
+			//	cout << "id = " << taskid << " count = " << k1 + k << " \n";
+
+
+
+
+				int *tmp_name = new int[(k1 + k) * 2];
+				MPI_Recv(tmp_name, k1 * 2, MPI_INT, taskid + rec_from, 91, MPI_COMM_WORLD, &st_l);
+				//int *t = new int[0];
+
+
+
+
+				for (int i = 0; i < k; i++)
+				{
+					tmp_name[i * 2 + k1 * 2] = union_buffer[i * 2];
+					tmp_name[i * 2 + k1 * 2 + 1] = union_buffer[i * 2 + 1];
+					//tmp_name[1] = union_buffer[1];
+				}
+
+				// Перекопировали в конец. Попробуем
+				
+				shell_count = k + k1;
+				/*
+							string st;
+
+							st = "";
+							for (int i = 0; i < shell_count; i++)
+							{
+								st += "(" + to_string(union_buffer[i * 2]) + ", " + to_string(union_buffer[i * 2 + 1]) + ") ";
+							}
+							st += "\n";
+							cout << st;
+
+				*/
+				// Теперь в массиве есть зашибись такие числа. И буфферы можно снова сократить
+
+				if (shell_count > 0)
+				{
+
+					vector<int> index;
+
+					shell_count = shell(tmp_name, shell_count, index);
+
+					union_buffer = new int[shell_count * 2];
+
+					for (int i = 0; i < shell_count; i++)
+					{
+						union_buffer[i * 2] = tmp_name[index[i] * 2];
+						union_buffer[i * 2 + 1] = tmp_name[index[i] * 2 + 1];
+					}
+
+					// Вот и привели все в порядок. По сути редуцировали точки
+				}
+
+			}
+
 		}
 
-
-
-		if (for_rec)
-		{
-			MPI_Status st_l;
-			rec_from = 1 << level;
-			k = shell_count;
-			MPI_Recv(&k1, 1, MPI_INT, taskid + rec_from, 90, MPI_COMM_WORLD,  &st_l);
-			cout << "id = " << taskid << " count = " << k1 + k << " \n";
-			
-
-
-
-			int *tmp_name = new int[(k1 + k) * 2];
-			MPI_Recv(tmp_name, k1 * 2, MPI_INT, taskid + rec_from, 91, MPI_COMM_WORLD, &st_l);
-			//int *t = new int[0];
-			
-
-			string st = "";
-			for (int i = 0; i < k1; i++)
-			{
-				st += "(" + to_string(tmp_name[i * 2]) + ", " + to_string(tmp_name[i * 2 + 1]) + ") ";
-			}
-			st += "\n";
-			cout << st;
-
-
-			st = "";
-			for (int i = 0; i < k; i++)
-			{
-				st += "(" + to_string(union_buffer[i * 2]) + ", " + to_string(union_buffer[i * 2 + 1]) + ") ";
-			}
-			st += "\n";
-			cout << st;
-
-			
-
-			for (int i = 0; i < k; i++)
-			{
-				tmp_name[i * 2 + k1 * 2] = union_buffer[i * 2];
-				tmp_name[i * 2 + k1 * 2 + 1] = union_buffer[i * 2 + 1];
-				//tmp_name[1] = union_buffer[1];
-			}
-			
-			// Перекопировали в конец. Попробуем
-			
-
-			union_buffer = tmp_name;
-			shell_count = k + k1;
-
-		}
-
-
-
+		level += 1;
 	}
 
 //	if (taskid < right_num_proc && for_send) cout << "id = " << taskid << "im for send" << "\n";
 //	if (taskid < right_num_proc && for_rec) cout << "id = " << taskid << "im for rec" << "\n";
+
+	if (taskid == 0)
+	{
+		string st;
+
+		st = "";
+		for (int i = 0; i < shell_count; i++)
+		{
+			st += "(" + to_string(union_buffer[i * 2]) + ", " + to_string(union_buffer[i * 2 + 1]) + ") ";
+		}
+		st += "\n";
+		cout << st;
+
+
+	}
+
 
 
 
